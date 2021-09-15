@@ -18,10 +18,14 @@ export async function run() {
     const syncLabels = !!core.getInput("sync-labels", { required: false });
 
     const prNumber = getPrNumber();
+    const isDraft = isPrDraft();
+
+    console.log("isPrDraft", isDraft);
+
     if (!prNumber) {
       console.log("Could not get pull request number from context, exiting");
       return;
-    }
+    }    
 
     const client: ClientType = github.getOctokit(token);
 
@@ -37,9 +41,11 @@ export async function run() {
       client,
       configPath
     );
+    console.log('labelGlobs', labelGlobs);
 
     const labels: string[] = [];
-    const labelsToRemove: string[] = [];
+    const labels: string[] = [];
+    const labelsToAvoidForDraftPrs: string[] = [];
     for (const [label, globs] of labelGlobs.entries()) {
       core.debug(`processing ${label}`);
       if (checkGlobs(changedFiles, globs)) {
@@ -50,7 +56,7 @@ export async function run() {
     }
 
     if (labels.length > 0) {
-      await addLabels(client, prNumber, labels);
+      await addLabels(client, prNumber, labels, labelsToAvoidForDraftPrs);
     }
 
     if (syncLabels && labelsToRemove.length) {
@@ -69,6 +75,15 @@ function getPrNumber(): number | undefined {
   }
 
   return pullRequest.number;
+}
+
+function isPrDraft(): bool | undefined {
+  const pullRequest = github.context.payload.pull_request;
+  if (!pullRequest) {
+    return undefined;
+  }
+
+  return pullRequest.draft;
 }
 
 async function getChangedFiles(
@@ -232,8 +247,13 @@ function checkMatch(changedFiles: string[], matchConfig: MatchConfig): boolean {
 async function addLabels(
   client: ClientType,
   prNumber: number,
-  labels: string[]
+  labels: string[],
+  labelsToAvoidForDraftPrs: string[],
 ) {
+  if (labelsToAvoidForDraftPrs?.length > 0 && labels.length > 0) {
+    labels =  labels.filter(label => !labelsToAvoidForDraftPrs.includes(label));
+  }
+
   await client.rest.issues.addLabels({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
