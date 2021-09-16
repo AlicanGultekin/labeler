@@ -25,7 +25,7 @@ export async function run() {
     if (!prNumber) {
       console.log("Could not get pull request number from context, exiting");
       return;
-    }    
+    }
 
     const client: ClientType = github.getOctokit(token);
 
@@ -41,10 +41,10 @@ export async function run() {
       client,
       configPath
     );
-    console.log('labelGlobs', labelGlobs);
+    console.log("labelGlobs", labelGlobs);
 
     const labels: string[] = [];
-    const labels: string[] = [];
+    const labelsToRemove: string[] = [];
     const labelsToAvoidForDraftPrs: string[] = [];
     for (const [label, globs] of labelGlobs.entries()) {
       core.debug(`processing ${label}`);
@@ -77,7 +77,7 @@ function getPrNumber(): number | undefined {
   return pullRequest.number;
 }
 
-function isPrDraft(): bool | undefined {
+function isPrDraft(): Boolean | undefined {
   const pullRequest = github.context.payload.pull_request;
   if (!pullRequest) {
     return undefined;
@@ -248,10 +248,12 @@ async function addLabels(
   client: ClientType,
   prNumber: number,
   labels: string[],
-  labelsToAvoidForDraftPrs: string[],
+  labelsToAvoidForDraftPrs: string[]
 ) {
   if (labelsToAvoidForDraftPrs?.length > 0 && labels.length > 0) {
-    labels =  labels.filter(label => !labelsToAvoidForDraftPrs.includes(label));
+    labels = labels.filter(
+      (label) => !labelsToAvoidForDraftPrs.includes(label)
+    );
   }
 
   await client.rest.issues.addLabels({

@@ -2,6 +2,7 @@ export const context = {
   payload: {
     pull_request: {
       number: 123,
+      draft: true,
     },
   },
   repo: {
